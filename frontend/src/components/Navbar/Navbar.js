@@ -54,7 +54,7 @@ const Navbar = (props) => {
             borderWidth={1}
             fontSize={"small"}
             backgroundColor={"transparent"}
-            href="https://github.com/pankil-soni"
+            href="https://github.com/vasu3110"
             mx={1}
           >
             <FaGithub />
@@ -73,7 +73,7 @@ const Navbar = (props) => {
         }}
       >
         <Flex justify={"space-between"}>
-          <Text fontSize="2xl">Conversa</Text>
+          <Text fontSize="2xl">Connectify</Text>
 
           <Box
             display={{ base: "none", md: "block" }}
@@ -99,7 +99,7 @@ const Navbar = (props) => {
               p={3}
               mr={2}
               onClick={() => {
-                window.open("https://github.com/pankil-soni");
+                window.open("https://github.com/vasu3110");
               }}
             >
               <FaGithub />

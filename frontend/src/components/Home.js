@@ -46,7 +46,7 @@ const Home = () => {
       <Flex direction="column" align="center" justify="center" minH="80vh">
         <Box textAlign="center">
           <Text fontSize={"7xl"} fontWeight={"bold"} fontFamily={"Work sans"}>
-            Conversa
+            Connectify
           </Text>
           <Text fontSize="xl" fontWeight="bold" mb={4}>
             Online Chatting App
@@ -68,10 +68,10 @@ const Home = () => {
         mt={4}
         textAlign="center"
       >
-        &copy; 2024 Conversa. All rights reserved.
-        <Link to="https://github.com/pankil-soni" target="_blank">
+        &copy; 2024 Connectify. All rights reserved.
+        <Link to="https://github.com/vasu3110" target="_blank">
           <Text as="u" color="purple.500" ml={1}>
-            Pankil Soni
+            Vasu Sharma
           </Text>
         </Link>
       </Text>

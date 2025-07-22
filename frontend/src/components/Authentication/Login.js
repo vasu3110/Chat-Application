@@ -102,7 +102,7 @@ const Login = (props) => {
     const data = {
       email: email,
     };
-
+    console.log(data.email)
     try {
       const response = await fetch(`${hostName}/auth/getotp`, {
         method: "POST",

@@ -2,7 +2,7 @@ const express = require("express");
 const connectDB = require("./db.js");
 const cors = require("cors");
 const http = require("http");
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 const { initSocket } = require("./socket/index.js");
 const app = express();
 app.use(cors({

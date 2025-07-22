@@ -120,11 +120,11 @@ const login = async (req, res) => {
         error: "Invalid Credentials",
       });
     }
-    console.log("hii");
+     //console.log("hii");
     if (otp) {
       if (user.otp != otp) {
         return res.status(400).json({
-          error: "Invalid otp",
+          error: "Invalid otp"
         });
       }
       user.otp = "";
@@ -228,73 +228,120 @@ const updateprofile = async (req, res) => {
   }
 };
 
+// const sendotp = async (req, res) => {
+//   try {
+//     console.log("sendotp request received");
+//     const { email } = req.body;
+//     const user = await User.findOne({ email });
+//     if (!user) {
+//       console.log("User not found")
+//       return res.status(400).json({
+//         error: "User not found",
+//       });
+//     }
+//     const otp = Math.floor(100000 + Math.random() * 900000);
+//     user.otp = otp;
+//     user.otpExpires = new Date(Date.now() + 5 * 60 * 1000);
+//     await user.save();
+ 
+//     //delete otp after 5 minutes
+//     setTimeout(() => {
+//       user.otp = "";
+//       user.save();
+//     }, 300000);
+
+//     let mailDetails = {
+//       from: process.env.EMAIL,
+//       to: email,
+//       subject: "Login with your Otp",
+
+//       html: `<!DOCTYPE html>
+//       <html lang="en">
+//       <head>
+//           <title>Otp for Login</title>
+//           <style>
+//               .container {
+//                   width: 50%;
+//                   margin: 0 auto;
+//                   background: #f4f4f4;
+//                   padding: 20px;
+//               }
+//               h1 {
+//                   text-align: center;
+//               }
+    
+//           </style> 
+//       </head>
+//       <body>
+//               <strong><h1>Conversa - online chatting app</h1></strong>
+//           <div class="container">
+//               <h2>Your Otp is</h2>
+//               <strong><p>${otp}</p><strong>
+//               <p>Use this Otp to login</p>
+//           </div>
+//       </body>
+//       </html>`,
+//     };
+
+//     await mailTransporter.sendMail(mailDetails, function (err, data) {
+//       if (err) {
+//         console.log("Error Occurs", err);
+//         res.status(400).json({ message: "Error Occurs" });
+//       } else {
+//         console.log("Email sent successfully");
+//         res.status(200).json({ message: "OTP sent" });
+//       }
+//     });
+//   } catch (error) {
+//     console.error(error.message);
+//     res.status(500).send("Internal Server Error");
+//   }
+// };
 const sendotp = async (req, res) => {
   try {
     console.log("sendotp request received");
     const { email } = req.body;
-    const user = await User.findOne({ email: req.body.email });
-    if (!user) {
-      return res.status(400).json({
-        error: "User not found",
-      });
+
+    // Simple email validation (can use a validator library for better validation)
+    if (!email || !email.match(/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/)) {
+      return res.status(400).json({ error: "Invalid email" });
     }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      console.log("User not found");
+      return res.status(400).json({ error: "User not found" });
+    }
+
     const otp = Math.floor(100000 + Math.random() * 900000);
     user.otp = otp;
+    user.otpExpires = new Date(Date.now() + 5 * 60 * 1000); // OTP expires in 5 mins
     await user.save();
 
-    //delete otp after 5 minutes
-    setTimeout(() => {
-      user.otp = "";
-      user.save();
-    }, 300000);
-
-    let mailDetails = {
+    const mailDetails = {
       from: process.env.EMAIL,
       to: email,
       subject: "Login with your Otp",
-
-      html: `<!DOCTYPE html>
-      <html lang="en">
-      <head>
-          <title>Otp for Login</title>
-          <style>
-              .container {
-                  width: 50%;
-                  margin: 0 auto;
-                  background: #f4f4f4;
-                  padding: 20px;
-              }
-              h1 {
-                  text-align: center;
-              }
-    
-          </style> 
-      </head>
-      <body>
-              <strong><h1>Conversa - online chatting app</h1></strong>
-          <div class="container">
-              <h2>Your Otp is</h2>
-              <strong><p>${otp}</p><strong>
-              <p>Use this Otp to login</p>
-          </div>
-      </body>
-      </html>`,
+      html: `<html><body>
+        <h1>Conversa - online chatting app</h1>
+        <div>
+          <h2>Your OTP is:</h2>
+          <p><strong>${otp}</strong></p>
+          <p>This OTP will expire in 5 minutes.</p>
+        </div>
+      </body></html>`,
     };
 
-    await mailTransporter.sendMail(mailDetails, function (err, data) {
-      if (err) {
-        console.log("Error Occurs", err);
-        res.status(400).json({ message: "Error Occurs" });
-      } else {
-        console.log("Email sent successfully");
-        res.status(200).json({ message: "OTP sent" });
-      }
-    });
+    await mailTransporter.sendMail(mailDetails);
+    console.log("Email sent successfully");
+    res.status(200).json({ message: "OTP sent" });
   } catch (error) {
+    console.log("Error in sending otp")
     console.error(error.message);
     res.status(500).send("Internal Server Error");
   }
 };
+
 
 module.exports = {
   register,
