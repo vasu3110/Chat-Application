@@ -6,7 +6,7 @@ const PORT = process.env.PORT || 5000;
 const { initSocket } = require("./socket/index.js");
 const app = express();
 app.use(cors({
-    origin:process.env.CORS_ORIGIN,
+    origin:https://chat-application-zxp8.onrender.com,
     credentials:true,
 }))
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
