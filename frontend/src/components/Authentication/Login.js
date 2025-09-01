@@ -28,40 +28,39 @@ import { ArrowBackIcon } from "@chakra-ui/icons";
 const CFaLock = chakra(FaLock);
 
 const Login = (props) => {
-  const context = useContext(chatContext);
-  const { hostName, socket, setUser, setIsAuthenticated, fetchData } = context;
+  const { hostName, socket, setUser, setIsAuthenticated, fetchData } =
+    useContext(chatContext);
   const toast = useToast();
-  const navigator = useNavigate();
+  const navigate = useNavigate();
 
-  const [email, setemail] = useState();
-  const [password, setpassword] = useState();
-  const handletabs = props.handleTabsChange;
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [forgotpasswordshow, setforgotpasswordshow] = useState(false);
-  const [sending, setsending] = useState(false);
+  const [forgotPasswordShow, setForgotPasswordShow] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleShowClick = () => setShowPassword(!showPassword);
 
   const showtoast = (title, description, status) => {
     toast({
-      title: title,
-      description: description,
-      status: status,
-      duration: 5000,
+      title,
+      description,
+      status,
+      duration: 4000,
       isClosable: true,
+      position: "top",
     });
   };
-  const handleLogin = async function (e) {
+
+  const handleLogin = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
-    const data = {
-      email: email,
-    };
-
-    //check if the user is trying to login using otp
+    const data = { email };
     const otp = document.getElementById("otp")?.value;
 
-    if (otp?.length > 0 && forgotpasswordshow) {
+    if (otp?.length > 0 && forgotPasswordShow) {
       data.otp = otp;
     } else {
       data.password = password;
@@ -70,59 +69,71 @@ const Login = (props) => {
     try {
       const response = await fetch(`${hostName}/auth/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
 
       const resdata = await response.json();
 
-      if (response.status !== 200) {
-        showtoast("An error occurred.", resdata.error, "error");
-      } else {
-        showtoast("Login successful", "You are now logged in", "success");
-
-        localStorage.setItem("token", resdata.authtoken);
-        setUser(await resdata.user);
-        socket.emit("setup", await resdata.user._id);
-        setIsAuthenticated(true);
-        fetchData();
-        navigator("/dashboard");
+      if (!response.ok) {
+        showtoast("Login failed", resdata.error || "Something went wrong", "error");
+        setLoading(false);
+        return;
       }
+
+      // ✅ save token and user
+      localStorage.setItem("token", resdata.authtoken);
+      localStorage.setItem("user", JSON.stringify(resdata.user));
+
+      // ✅ update state (this will trigger rerenders in context consumers)
+      setUser(resdata.user);
+      setIsAuthenticated(true);
+
+      // ✅ reconnect socket
+      if (resdata.user?._id && socket) {
+        socket.connect();
+        socket.emit("setup", resdata.user._id);
+      }
+
+      // ✅ fetch data before navigating
+      await fetchData();
+
+      showtoast("Login successful", "You are now logged in", "success");
+
+      // ✅ navigate
+      navigate("/dashboard", { replace: true });
     } catch (error) {
-      console.log(error);
+      console.error(error);
+      showtoast("Error", "Something went wrong, please try again", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handlesendotp = async (e) => {
+  const handleSendOtp = async (e) => {
     e.preventDefault();
-    setsending(true);
+    setSending(true);
 
-    const data = {
-      email: email,
-    };
-    console.log(data.email)
     try {
       const response = await fetch(`${hostName}/auth/getotp`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
       });
 
       const resdata = await response.json();
+      setSending(false);
 
-      setsending(false);
-
-      if (response.status !== 200) {
-        showtoast("An error occurred.", resdata.error, "error");
-      } else {
-        showtoast("otp sent", "otp sent to your email", "success");
+      if (!response.ok) {
+        showtoast("Error", resdata.error || "Could not send OTP", "error");
+        return;
       }
+
+      showtoast("OTP Sent", "Check your email", "success");
     } catch (error) {
-      console.log(error);
+      setSending(false);
+      console.error(error);
+      showtoast("Error", "Something went wrong", "error");
     }
   };
 
@@ -135,75 +146,61 @@ const Login = (props) => {
       alignItems="center"
       borderRadius={15}
     >
-      <Stack
-        flexDir="column"
-        mb="2"
-        justifyContent="center"
-        alignItems="center"
-      >
+      <Stack flexDir="column" mb="2" justifyContent="center" alignItems="center">
         <Avatar bg="purple.300" />
-        <Heading color="pruple.400">Welcome Back</Heading>
+        <Heading color="purple.400">Welcome Back</Heading>
         <Card minW={{ base: "90%", md: "468px" }} borderRadius={15} shadow={0}>
           <CardBody p={0}>
-            <form>
+            <form onSubmit={handleLogin}>
               <Stack spacing={4}>
-                {forgotpasswordshow && (
+                {forgotPasswordShow && (
                   <Tooltip label="login" aria-label="A tooltip">
                     <Button
-                      w={"fit-content"}
-                      onClick={() => setforgotpasswordshow(false)}
+                      w="fit-content"
+                      onClick={() => setForgotPasswordShow(false)}
                     >
                       <ArrowBackIcon />
                     </Button>
                   </Tooltip>
                 )}
-                <FormControl display={"flex"}>
-                  <InputGroup
-                    borderEndRadius={"10px"}
-                    borderStartRadius={"10px"}
-                    size={"lg"}
-                  >
+
+                <FormControl display="flex">
+                  <InputGroup borderRadius="10px" size="lg">
                     <Input
                       id="login-email"
                       type="email"
-                      placeholder="email address"
+                      placeholder="Email address"
                       focusBorderColor="purple.500"
-                      onChange={(e) => setemail(e.target.value)}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
                     />
                   </InputGroup>
-                  {forgotpasswordshow && (
-                    <Button
-                      m={1}
-                      fontSize={"sm"}
-                      onClick={(e) => handlesendotp(e)}
-                    >
-                      {sending ? <Spinner size="sm" /> : "Send otp"}
+                  {forgotPasswordShow && (
+                    <Button m={1} fontSize="sm" onClick={handleSendOtp}>
+                      {sending ? <Spinner size="sm" /> : "Send OTP"}
                     </Button>
                   )}
                 </FormControl>
 
-                {!forgotpasswordshow && (
+                {!forgotPasswordShow && (
                   <FormControl>
-                    <InputGroup
-                      borderEndRadius={"10px"}
-                      borderStartRadius={"10px"}
-                      size={"lg"}
-                    >
-                      <InputLeftElement
-                        pointerEvents="none"
-                        color="gray.300"
-                        children={<CFaLock color="gray.300" />}
-                      />
+                    <InputGroup borderRadius="10px" size="lg">
+                      <InputLeftElement pointerEvents="none">
+                        <CFaLock color="gray.300" />
+                      </InputLeftElement>
                       <Input
                         type={showPassword ? "text" : "password"}
                         placeholder="Password"
                         focusBorderColor="purple.500"
-                        onChange={(e) => setpassword(e.target.value)}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
                       />
                       <InputRightElement mx={1}>
                         <Button
-                          fontSize={"x-small"}
-                          size={"xs"}
+                          fontSize="x-small"
+                          size="xs"
                           onClick={handleShowClick}
                         >
                           {showPassword ? "Hide" : "Show"}
@@ -211,37 +208,36 @@ const Login = (props) => {
                       </InputRightElement>
                     </InputGroup>
                     <FormHelperText textAlign="right">
-                      <Link onClick={() => setforgotpasswordshow(true)}>
+                      <Link onClick={() => setForgotPasswordShow(true)}>
                         forgot password?
                       </Link>
                     </FormHelperText>
                   </FormControl>
                 )}
-                {forgotpasswordshow && (
+
+                {forgotPasswordShow && (
                   <FormControl>
-                    <InputGroup
-                      borderEndRadius={"10px"}
-                      borderStartRadius={"10px"}
-                      size={"lg"}
-                    >
+                    <InputGroup borderRadius="10px" size="lg">
                       <Input
-                        id={"otp"}
+                        id="otp"
                         type="number"
-                        placeholder="enter otp"
+                        placeholder="Enter OTP"
                         focusBorderColor="purple.500"
                       />
                     </InputGroup>
                   </FormControl>
                 )}
+
                 <Button
                   borderRadius={10}
                   type="submit"
                   variant="solid"
                   colorScheme="purple"
                   width="full"
-                  onClick={handleLogin}
+                  isLoading={loading}
+                  loadingText="Logging in..."
                 >
-                  {forgotpasswordshow ? "Login using otp" : "Login"}
+                  {forgotPasswordShow ? "Login using OTP" : "Login"}
                 </Button>
               </Stack>
             </form>
@@ -250,7 +246,7 @@ const Login = (props) => {
       </Stack>
       <Box>
         New to us?{" "}
-        <Link color="purple.500" onClick={() => handletabs(1)}>
+        <Link color="purple.500" onClick={() => props.handleTabsChange(1)}>
           Sign Up
         </Link>
       </Box>
