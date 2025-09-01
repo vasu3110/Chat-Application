@@ -50,7 +50,6 @@ const markdownToHtml = (markdownText) => {
 export const ChatArea = () => {
   const context = useContext(chatContext);
   const {
-    hostName,
     user,
     receiver,
     socket,
@@ -331,11 +330,21 @@ export const ChatArea = () => {
       if (!imageUrl) return;
     }
 
+    if (!messageText && !imageUrl) {
+      toast({
+        title: "Message cannot be empty",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
     const data = {
       text: messageText,
       conversationId: activeChatId,
       senderId: user._id,
-      imageUrl,
+      imageUrl:imageUrl,
     };
 
     socket.emit("send-message", data);
@@ -372,7 +381,7 @@ export const ChatArea = () => {
     <>
       {activeChatId !== "" ? (
         <>
-          <Box
+          {/* <Box
             justifyContent="space-between"
             h="100%"
             w={{
@@ -491,7 +500,117 @@ export const ChatArea = () => {
                 </InputGroup>
               </FormControl>
             </Box>
+          </Box> */}
+          <Box
+            justifyContent="space-between"
+            h="100%"
+            w={{
+              base: "100vw",
+              md: "100%",
+            }}
+            display="flex"
+            flexDirection="column"
+          >
+            <ChatAreaTop />
+
+            {isChatLoading && <ChatLoadingSpinner />}
+
+            {/* Messages area */}
+            <Box
+              id="chat-box"
+              flex="1"
+              overflowY="auto"
+              sx={scrollbarconfig}
+              px={2}
+              pb={2} // ✅ ensures spacing so last msg isn’t hidden behind input
+            >
+              {messageList?.map((message) =>
+                !message.deletedby?.includes(user._id) ? (
+                  <SingleMessage
+                    key={message._id}
+                    message={message}
+                    user={user}
+                    receiver={receiver}
+                    markdownToHtml={markdownToHtml}
+                    scrollbarconfig={scrollbarconfig}
+                    socket={socket}
+                    activeChatId={activeChatId}
+                    removeMessageFromList={removeMessageFromList}
+                    toast={toast}
+                  />
+                ) : null
+              )}
+              {/* typing animation */}
+              {isOtherUserTyping && (
+                <Box mt={2}>
+                  <Lottie
+                    options={defaultOptions}
+                    height={20}
+                    width={20}
+                    isStopped={false}
+                    isPaused={false}
+                  />
+                </Box>
+              )}
+            </Box>
+
+            {/* Input box (now inside flex flow, not fixed) */}
+            <Box
+              py={2}
+              px={2}
+              borderTop="1px solid"
+              borderColor="gray.200"
+              backgroundColor={
+                localStorage.getItem("chakra-ui-color-mode") === "dark"
+                  ? "#1a202c"
+                  : "white"
+              }
+            >
+              <FormControl>
+                <InputGroup
+                  w="100%"
+                  onKeyDown={handleKeyPress}
+                >
+                  {!receiver?.email?.includes("bot") && (
+                    <InputLeftElement>
+                      <Button
+                        mx={2}
+                        size="sm"
+                        onClick={onOpen}
+                        borderRadius="lg"
+                      >
+                        <FaFileUpload />
+                      </Button>
+                    </InputLeftElement>
+                  )}
+
+                  <Input
+                    placeholder="Type a message"
+                    id="new-message"
+                    onChange={handleTyping}
+                    borderRadius="10px"
+                  />
+
+                  <InputRightElement>
+                    <Button
+                      onClick={(e) =>
+                        handleSendMessage(
+                          e,
+                          document.getElementById("new-message")?.value
+                        )
+                      }
+                      size="sm"
+                      mx={2}
+                      borderRadius="10px"
+                    >
+                      <ArrowForwardIcon />
+                    </Button>
+                  </InputRightElement>
+                </InputGroup>
+              </FormControl>
+            </Box>
           </Box>
+
           <FileUploadModal
             isOpen={isOpen}
             onClose={onClose}

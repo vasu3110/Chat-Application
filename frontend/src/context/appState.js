@@ -1,19 +1,15 @@
 import chatContext from "./chatContext";
 import { useState, useEffect } from "react";
-import io from "socket.io-client";
-// 192.168.0.104
-//http://192.168.0.104:5000
-//https://chat-app-u2cq.onrender.com
-// http://localhost:5000
-//"https://chat-app-u2cq.onrender.com"
+import { io } from "socket.io-client";
+
 const hostName = "https://chat-application-zxp8.onrender.com";
-var socket = io(hostName);
 
 const ChatState = (props) => {
   const [isAuthenticated, setIsAuthenticated] = useState(
     localStorage.getItem("token") ? true : false
   );
   const [user, setUser] = useState(localStorage.getItem("user") || {});
+  const [socket, setSocket] = useState(null);  // socket is now in state
   const [receiver, setReceiver] = useState({});
   const [messageList, setMessageList] = useState([]);
   const [activeChatId, setActiveChatId] = useState("");
@@ -44,21 +40,38 @@ const ChatState = (props) => {
     }
   };
 
+  // 👇 socket lifecycle effect
   useEffect(() => {
-    socket.on("receiver-online", () => {
-      setReceiver((prevReceiver) => ({ ...prevReceiver, isOnline: true }));
-    });
-  }, []);
+    if (isAuthenticated && user?._id) {
+      const newSocket = io(hostName, {
+        withCredentials: true,
+      });
 
-  useEffect(() => {
-    socket.on("receiver-offline", () => {
-      setReceiver((prevReceiver) => ({
-        ...prevReceiver,
-        isOnline: false,
-        lastSeen: new Date().toISOString(),
-      }));
-    });
-  }, []);
+      setSocket(newSocket);
+
+      newSocket.on("connect", () => {
+        console.log("Socket connected:", newSocket.id);
+        newSocket.emit("setup", user._id);
+      });
+
+      newSocket.on("receiver-online", () => {
+        setReceiver((prevReceiver) => ({ ...prevReceiver, isOnline: true }));
+      });
+
+      newSocket.on("receiver-offline", () => {
+        setReceiver((prevReceiver) => ({
+          ...prevReceiver,
+          isOnline: false,
+          lastSeen: new Date().toISOString(),
+        }));
+      });
+
+      return () => {
+        console.log("Disconnecting socket...");
+        newSocket.disconnect();
+      };
+    }
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -74,14 +87,7 @@ const ChatState = (props) => {
           });
           const data = await res.json();
           setUser(data);
-          console.log("user fetched");
           setIsAuthenticated(true);
-          if (data && data._id) {
-            socket.emit("setup", data._id);
-          } 
-          else {
-            console.warn("User data invalid or missing _id", data);
-          }
         }
       } catch (error) {
         console.log(error);
@@ -114,7 +120,7 @@ const ChatState = (props) => {
         originalChatList,
         fetchData,
         hostName,
-        socket,
+        socket, // provide fresh socket instance
         isOtherUserTyping,
         setIsOtherUserTyping,
         isChatLoading,
